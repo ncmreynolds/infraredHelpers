@@ -10,8 +10,8 @@ class infraredHelpers
 		~infraredHelpers();																//Destructor function
 
 		//Symbol count
-		uint8_t getMaximumNumberOfSymbols() __attribute__((always_inline));				//Maximum number of symbols
-		void setMaximumNumberOfSymbols(uint8_t symbols);								//Must be done before begin(), default is 48
+		uint16_t getMaximumNumberOfSymbols() __attribute__((always_inline));			//Maximum number of symbols
+		bool setMaximumNumberOfSymbols(uint16_t symbols);								//Must be done before begin(), default varies by platform
 		uint8_t getMinimumNumberOfSymbols();											//Minimum number of symbols, which varies by platform
 		//Message length
 		uint8_t getMaximumMessageLength(uint8_t length);								//Get the maximum message length
@@ -22,30 +22,50 @@ class infraredHelpers
 	
 	protected:
 		uint8_t maximum_message_length_ = 2;											//Maximum size of a message, without preamble, start bits etc.
-		#if CONFIG_IDF_TARGET_ESP32C3
-			uint8_t maximum_number_of_symbols_ = 48;									//Default to minimum
+		#if CONFIG_IDF_TARGET_ESP32
+			uint16_t maximum_number_of_symbols_ = 64;									//Default to minimum
 		#elif CONFIG_IDF_TARGET_ESP32S2
-			uint8_t maximum_number_of_symbols_ = 64;									//Default to minimum
+			uint16_t maximum_number_of_symbols_ = 64;									//Default to minimum
 		#elif CONFIG_IDF_TARGET_ESP32S3
-			uint8_t maximum_number_of_symbols_ = 64;									//Default to minimum
+			uint16_t maximum_number_of_symbols_ = 64;									//Default to minimum
+		#elif CONFIG_IDF_TARGET_ESP32C2
+			uint16_t maximum_number_of_symbols_ = 48;									//Default to minimum
+		#elif CONFIG_IDF_TARGET_ESP32C3
+			uint16_t maximum_number_of_symbols_ = 48;									//Default to minimum
+		#elif CONFIG_IDF_TARGET_ESP32C6
+			uint16_t maximum_number_of_symbols_ = 48;									//Default to minimum
+		#elif CONFIG_IDF_TARGET_ESP32H2
+			uint16_t maximum_number_of_symbols_ = 64;									//Default to minimum
+		#elif CONFIG_IDF_TARGET_ESP32P4
+			uint16_t maximum_number_of_symbols_ = 64;									//Default to minimum
 		#else
-			uint8_t maximum_number_of_symbols_ = 64;									//Default to minimum
+			uint16_t maximum_number_of_symbols_ = 64;									//Default to minimum
 		#endif
 
 		Stream *debug_uart_ = nullptr;													//The stream used for debugging
 	
 	private:
-		#if CONFIG_IDF_TARGET_ESP32C3
-			uint8_t minimum_number_of_symbols_ = 48;									//48 is ESP32C3 minimum
+		#if CONFIG_IDF_TARGET_ESP32
+			uint8_t minimum_number_of_symbols_ = 64;									//64 is ESP32 classic minimum
 		#elif CONFIG_IDF_TARGET_ESP32S2
 			uint8_t minimum_number_of_symbols_ = 64;									//64 is ESP32S2 minimum
 		#elif CONFIG_IDF_TARGET_ESP32S3
 			uint8_t minimum_number_of_symbols_ = 64;									//64 is ESP32S3 minimum
+		#elif CONFIG_IDF_TARGET_ESP32C2
+			uint8_t minimum_number_of_symbols_ = 48;									//48 is ESP32C2 minimum
+		#elif CONFIG_IDF_TARGET_ESP32C3
+			uint8_t minimum_number_of_symbols_ = 48;									//48 is ESP32C3 minimum
+		#elif CONFIG_IDF_TARGET_ESP32C6
+			uint8_t minimum_number_of_symbols_ = 48;									//48 is ESP32C6 minimum
+		#elif CONFIG_IDF_TARGET_ESP32H2
+			uint8_t minimum_number_of_symbols_ = 64;									//64 is ESP32H2 minimum
+		#elif CONFIG_IDF_TARGET_ESP32P4
+			uint8_t minimum_number_of_symbols_ = 64;									//64 is ESP32P4 minimum
 		#else
-			uint8_t minimum_number_of_symbols_ = 64;									//64 is ESP32 minimum
+			uint8_t minimum_number_of_symbols_ = 64;									//64 is an assumed default ESP32 minimum
 		#endif
 };
-inline uint8_t infraredHelpers::getMaximumNumberOfSymbols()	//Maximum number of symbols
+inline uint16_t infraredHelpers::getMaximumNumberOfSymbols()	//Maximum number of symbols
 {
 	return maximum_number_of_symbols_;
 }
