@@ -10,7 +10,7 @@ class infraredHelpers
 		~infraredHelpers();																//Destructor function
 
 		//Symbol count
-		uint8_t getMaximumNumberOfSymbols();											//Maximum number of symbols
+		uint8_t getMaximumNumberOfSymbols() __attribute__((always_inline));				//Maximum number of symbols
 		void setMaximumNumberOfSymbols(uint8_t symbols);								//Must be done before begin(), default is 48
 		uint8_t getMinimumNumberOfSymbols();											//Minimum number of symbols, which varies by platform
 		//Message length
@@ -22,7 +22,15 @@ class infraredHelpers
 	
 	protected:
 		uint8_t maximum_message_length_ = 2;											//Maximum size of a message, without preamble, start bits etc.
-		uint8_t maximum_number_of_symbols_ = 24;										//Default to minimum
+		#if CONFIG_IDF_TARGET_ESP32C3
+			uint8_t maximum_number_of_symbols_ = 48;									//Default to minimum
+		#elif CONFIG_IDF_TARGET_ESP32S2
+			uint8_t maximum_number_of_symbols_ = 64;									//Default to minimum
+		#elif CONFIG_IDF_TARGET_ESP32S3
+			uint8_t maximum_number_of_symbols_ = 64;									//Default to minimum
+		#else
+			uint8_t maximum_number_of_symbols_ = 64;									//Default to minimum
+		#endif
 
 		Stream *debug_uart_ = nullptr;													//The stream used for debugging
 	
@@ -37,14 +45,18 @@ class infraredHelpers
 			uint8_t minimum_number_of_symbols_ = 64;									//64 is ESP32 minimum
 		#endif
 };
+inline uint8_t infraredHelpers::getMaximumNumberOfSymbols()	//Maximum number of symbols
+{
+	return maximum_number_of_symbols_;
+}
 
 class infraredTransmitHelper
 {
 	public:
 		infraredTransmitHelper();														//Constructor function
 		~infraredTransmitHelper();														//Destructor function
-		virtual void setCarrierFrequency(uint16_t frequency);							//Must be done before begin(), default is 56000
-		virtual void setDutyCycle(uint8_t duty, uint8_t transmitterIndex = 0);			//Must be done before begin(), default is 50 and very unlikely to change
+		virtual bool setCarrierFrequency(uint16_t frequency);							//Must be done before begin(), default is 56000
+		virtual bool setDutyCycle(uint8_t duty, uint8_t transmitterIndex = 0);			//Must be done before begin(), default is 50 and very unlikely to change
 		virtual bool begin(uint8_t numberOfTransmitters);								//Set up transmitters
 		virtual bool configureTxPin(uint8_t index, int8_t pin);							//Configure a pin for TX on the specified channel
 		virtual bool addSymbol(uint8_t index, uint16_t duration0, uint8_t level0,		//Add a symbol to the buffer for the specified transmitter channel

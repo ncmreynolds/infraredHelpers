@@ -23,8 +23,8 @@ class esp32rmtTransmitHelper : public infraredHelpers, public infraredTransmitHe
 	public:
 		esp32rmtTransmitHelper();												//Constructor function
 		~esp32rmtTransmitHelper();												//Destructor function
-		void setCarrierFrequency(uint16_t frequency);							//Must be done before begin(), default is 56000
-		void setDutyCycle(uint8_t duty, uint8_t transmitterIndex = 0);			//Must be done before begin(), default is 50 and very unlikely to change
+		bool setCarrierFrequency(uint16_t frequency);							//Must be done before begin(), default is 56000
+		bool setDutyCycle(uint8_t duty, uint8_t transmitterIndex = 0);			//Must be done before begin(), default is 50 and very unlikely to change
 		bool begin(uint8_t numberOfTransmitters = 1);							//Initialise one or more transmitters
 		bool configureTxPin(uint8_t index, int8_t pin);							//Configure a pin for TX on the current available channel
 		bool addSymbol(uint8_t index, uint16_t duration0, uint8_t level0,		//Add a symbol to the buffer for the specified transmitter channel
@@ -75,8 +75,8 @@ class esp32rmtReceiveHelper : public infraredHelpers, public infraredReceiveHelp
 	private:
 		//Global RMT settings
 		rmt_receive_config_t global_receiver_config_ = {						//Global config across all receivers
-			.signal_range_min_ns = 2e3,											//Actually 600us but 2us is the smallest acceptable value in the SDK
-			.signal_range_max_ns = 2800e3,										//Actually 2400us but allow some margin
+			.signal_range_min_ns = 2000,										//Actually 600us but 2us is the smallest acceptable value in the SDK
+			.signal_range_max_ns = 2800000,										//Actually 2400us but allow some margin
 		};
 		//Receiver RMT data
 		rmt_rx_channel_config_t* infrared_receiver_config_ = nullptr;			//The RMT configuration for the receiver(s)

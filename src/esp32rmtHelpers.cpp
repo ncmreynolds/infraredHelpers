@@ -68,12 +68,13 @@ bool esp32rmtTransmitHelper::begin(uint8_t numberOfTransmitters)
 	return initialisation_success_;
 }
 
-void esp32rmtTransmitHelper::setCarrierFrequency(uint16_t frequency)				//Must be done before begin(), default is 56000
+bool esp32rmtTransmitHelper::setCarrierFrequency(uint16_t frequency)				//Must be done before begin(), default is 56000
 {
 	global_transmitter_config_.frequency_hz = frequency;
+	return true;
 }
 
-void esp32rmtTransmitHelper::setDutyCycle(uint8_t duty, uint8_t transmitterIndex)	//Must be done before begin(), default is 50 and very unlikely to change
+bool esp32rmtTransmitHelper::setDutyCycle(uint8_t duty, uint8_t transmitterIndex)	//Must be done before begin(), default is 50 and very unlikely to change
 {
 	if(duty > 4 && duty < 76)
 	{
@@ -82,7 +83,9 @@ void esp32rmtTransmitHelper::setDutyCycle(uint8_t duty, uint8_t transmitterIndex
 		{
 			debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: duty cycle set at %u%%\r\n"), duty);
 		}
+		return true;
 	}
+	return false;
 }
 
 bool esp32rmtTransmitHelper::configureTxPin(uint8_t index, int8_t pin)

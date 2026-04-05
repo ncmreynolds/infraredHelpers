@@ -10,21 +10,23 @@ avrInfraredTransmitHelper::avrInfraredTransmitHelper()	//Constructor function
 avrInfraredTransmitHelper::~avrInfraredTransmitHelper()	//Destructor function
 {
 }
-void avrInfraredTransmitHelper::setCarrierFrequency(uint16_t frequency)				//Must be done before begin(), default is 56000
+bool avrInfraredTransmitHelper::setCarrierFrequency(uint16_t frequency)				//Must be done before begin(), default is 56000
 {
+	return true;
 }
-void avrInfraredTransmitHelper::setDutyCycle(uint8_t duty, uint8_t transmitterIndex)	//Must be done before begin(), default is 50 and very unlikely to change
+bool avrInfraredTransmitHelper::setDutyCycle(uint8_t duty, uint8_t transmitterIndex)	//Must be done before begin(), default is 50 and very unlikely to change
 {
+	return true;
 }
 bool avrInfraredTransmitHelper::begin(uint8_t numberOfTransmitters)	//Set up transmitters
 {
 	return false;
 }
-bool avrInfraredTransmitHelper::configureTxPin(uint8_t index, int8_t pin)				//Configure a pin for TX on the specified channel
+bool avrInfraredTransmitHelper::configureTxPin(uint8_t transmitterIndex, int8_t pin)				//Configure a pin for TX on the specified channel
 {
 	return false;
 }
-bool avrInfraredTransmitHelper::addSymbol(uint8_t index, uint16_t duration0, uint8_t level0, uint16_t duration1, uint8_t level1)		//Add a symbol to the buffer for the specified transmitter channel
+bool avrInfraredTransmitHelper::addSymbol(uint8_t transmitterIndex, uint16_t duration0, uint8_t level0, uint16_t duration1, uint8_t level1)		//Add a symbol to the buffer for the specified transmitter channel
 {
 	return false;
 }
@@ -32,7 +34,7 @@ bool avrInfraredTransmitHelper::transmitSymbols(uint8_t transmitterIndex, bool w
 {
 	return false;
 }
-bool avrInfraredTransmitHelper::transmitterBusy(uint8_t index)									//Used to check if busy before starting another transmission
+bool avrInfraredTransmitHelper::transmitterBusy(uint8_t transmitterIndex)									//Used to check if busy before starting another transmission
 {
 	return false;
 }
@@ -50,22 +52,22 @@ bool avrInfraredReceiveHelper::begin(uint8_t numberOfReceivers)
 {
 	bool initialisation_success_ = true;
 	number_of_receivers_ = numberOfReceivers;														//Record the number of receivers
-	received_symbols_ = new uint16_t*[number_of_receivers_];										//Create array of symbol buffer(s)
-	waiting_for_symbols_ = new bool[number_of_receivers_];
-	number_of_received_symbols_ = new uint8_t[number_of_receivers_];								//Create array of symbol buffer length(s)
-	last_edge_ = new uint32_t[number_of_receivers_];												//Edge timers
-	current_edge_ = new uint16_t[number_of_receivers_];												//Edge timer index
-	for(uint8_t index = 0; index < number_of_receivers_; index++)
+	received_symbols_ = new volatile uint16_t*[number_of_receivers_];										//Create array of symbol buffer(s)
+	waiting_for_symbols_ = new volatile bool[number_of_receivers_];
+	number_of_received_symbols_ = new volatile uint8_t[number_of_receivers_];								//Create array of symbol buffer length(s)
+	last_edge_ = new volatile uint32_t[number_of_receivers_];												//Edge timers
+	current_edge_index_ = new volatile uint16_t[number_of_receivers_];												//Edge timer index
+	for(uint8_t receiverIndex = 0; receiverIndex < number_of_receivers_; receiverIndex++)
 	{
-		received_symbols_[index] = new uint16_t[getMaximumNumberOfSymbols()*2];						//Create symbol buffers
+		received_symbols_[receiverIndex] = new uint16_t[getMaximumNumberOfSymbols()*2];						//Create symbol buffers
 		for(uint8_t symbolIndex = 0; symbolIndex < getMaximumNumberOfSymbols()*2; symbolIndex++)
 		{
-			received_symbols_[index][symbolIndex] = 0;												//Blank out the buffer, just in case
+			received_symbols_[receiverIndex][symbolIndex] = 0;												//Blank out the buffer, just in case
 		}
-		number_of_received_symbols_[index] = 0;														//Set received buffer length to zero
-		last_edge_[index] = 0;																		//Clear last edge time
-		current_edge_[index] = 0;																	//Reset symbol index
-		waiting_for_symbols_[index] = true;															//Be ready to accept symbols
+		number_of_received_symbols_[receiverIndex] = 0;														//Set received buffer length to zero
+		last_edge_[receiverIndex] = 0;																		//Clear last edge time
+		current_edge_index_[receiverIndex] = 0;																	//Reset symbol index
+		waiting_for_symbols_[receiverIndex] = true;															//Be ready to accept symbols
 	}
 	if(debug_uart_ != nullptr)
 	{
@@ -77,39 +79,30 @@ bool avrInfraredReceiveHelper::begin(uint8_t numberOfReceivers)
 	}
 	return initialisation_success_;
 }
-inline void avrInfraredReceiveHelperIsr(uint8_t index)
+inline void avrInfraredReceiveHelperIsr(uint8_t receiverIndex)
 {
-	if(receiveHelper.waiting_for_symbols_[index] == true)
+	if(receiveHelper.waiting_for_symbols_[receiverIndex] == true)
 	{
-		if(receiveHelper.current_edge_[index] > 0 && micros() - receiveHelper.last_edge_[index] > 5000)	//Pulse must be 'first' or within 5ms of the last so reset to start, this filters out stray readings
+		receiveHelper.last_edge_[receiverIndex] = micros();
+		receiveHelper.received_symbols_[receiverIndex][receiveHelper.current_edge_index_[receiverIndex]++] = (receiveHelper.last_edge_[receiverIndex] - receiveHelper.last_edge_[receiverIndex]);	//Divide by 8
+		if(receiveHelper.current_edge_index_[receiverIndex] == receiveHelper.getMaximumNumberOfSymbols()*2) //Stop accepting timings because we're out of array!
 		{
-			receiveHelper.current_edge_[index] = 0;
-			Serial.println("Timing buffer auto-reset");
-		}
-		if(micros() - receiveHelper.last_edge_[index] < 5000)	//Continue reading edges
-		{
-			receiveHelper.received_symbols_[index][receiveHelper.current_edge_[index]++] = (micros() - receiveHelper.last_edge_[index])>>3;
-		}
-		receiveHelper.last_edge_[index] = micros();
-		if(receiveHelper.current_edge_[index] == receiveHelper.getMaximumNumberOfSymbols()*2) //Stop accepting timings because we're out of array!
-		{
-			receiveHelper.waiting_for_symbols_[index] = false;
-			receiveHelper.current_edge_[index]--;
-			Serial.println("Timing buffer overflow");
+			receiveHelper.waiting_for_symbols_[receiverIndex] = false;
+			Serial.println(F("avrInfraredReceiveHelper: timing buffer overflow"));
 		}
 	}
 }
-void avrInfraredReceiveHelperIsr0()
+inline void avrInfraredReceiveHelperIsr0()
 {
 	avrInfraredReceiveHelperIsr(0);
 }
-void avrInfraredReceiveHelperIsr1()
+inline void avrInfraredReceiveHelperIsr1()
 {
 	avrInfraredReceiveHelperIsr(1);
 }
-bool avrInfraredReceiveHelper::configureRxPin(uint8_t index, int8_t pin, bool inverted)				//Configure a pin for RX on the current available channel
+bool avrInfraredReceiveHelper::configureRxPin(uint8_t receiverIndex, int8_t pin, bool inverted)				//Configure a pin for RX on the current available channel
 {
-	if(index < 2)
+	if(receiverIndex < 2)
 	{
 		pinMode(pin, INPUT);
 		delay(500);
@@ -123,7 +116,7 @@ bool avrInfraredReceiveHelper::configureRxPin(uint8_t index, int8_t pin, bool in
 			}
 			return true;
 		}
-		switch (index)
+		switch (receiverIndex)
 		{
 			case 0:
 				attachInterrupt(digitalPinToInterrupt(pin), avrInfraredReceiveHelperIsr0, CHANGE);
@@ -135,7 +128,7 @@ bool avrInfraredReceiveHelper::configureRxPin(uint8_t index, int8_t pin, bool in
 				return false;
 			break;
 		}
-		waiting_for_symbols_[index] = true;
+		waiting_for_symbols_[receiverIndex] = true;
 		if(true)
 		{
 			if(debug_uart_ != nullptr)
@@ -158,76 +151,118 @@ bool avrInfraredReceiveHelper::configureRxPin(uint8_t index, int8_t pin, bool in
 	}
 	return false;
 }
-uint8_t avrInfraredReceiveHelper::receivedSymbolLevel0(uint8_t index, uint16_t symbolIndex)			//Getter for the symbol data
+uint8_t avrInfraredReceiveHelper::receivedSymbolLevel0(uint8_t receiverIndex, uint16_t symbolIndex)			//Getter for the symbol data
 {
 	return 1;	//Not recording this so assume level0 is high
 	//return (symbolIndex & 0x0001) == 0;	//Assume even durations are low
 }
-uint8_t avrInfraredReceiveHelper::receivedSymbolLevel1(uint8_t index, uint16_t symbolIndex)			//Getter for the symbol data
+uint8_t avrInfraredReceiveHelper::receivedSymbolLevel1(uint8_t receiverIndex, uint16_t symbolIndex)			//Getter for the symbol data
 {
 	return 0;	//Not recording this so assume level1 is low
 	//return (symbolIndex & 0x0001) != 0;	//Assume odd durations are high
 }
-uint16_t avrInfraredReceiveHelper::receivedSymbolDuration0(uint8_t index, uint16_t symbolIndex)		//Getter for the symbol data
+uint16_t avrInfraredReceiveHelper::receivedSymbolDuration0(uint8_t receiverIndex, uint16_t symbolIndex)		//Getter for the symbol data
 {
-	return uint16_t(received_symbols_[index][symbolIndex<<1])<<3;	//Even entries are duration0
+	return uint16_t(received_symbols_[receiverIndex][symbolIndex<<1]);	//Even entries are duration0
 }
-uint16_t avrInfraredReceiveHelper::receivedSymbolDuration1(uint8_t index, uint16_t symbolIndex)		//Getter for the symbol data
+uint16_t avrInfraredReceiveHelper::receivedSymbolDuration1(uint8_t receiverIndex, uint16_t symbolIndex)		//Getter for the symbol data
 {
-	return uint16_t(received_symbols_[index][1+(symbolIndex<<1)])<<3;	//Odd entries are duration1
+	return uint16_t(received_symbols_[receiverIndex][1+(symbolIndex<<1)]);	//Odd entries are duration1
 }
-uint8_t avrInfraredReceiveHelper::getNumberOfReceivedSymbols(uint8_t index)
+uint8_t avrInfraredReceiveHelper::getNumberOfReceivedSymbols(uint8_t receiverIndex)
 {
-	if(index < number_of_receivers_)
+	if(receiverIndex < number_of_receivers_)
 	{
-		if(waiting_for_symbols_[index] == true)
+		if(waiting_for_symbols_[receiverIndex] == true)
 		{
-			if(current_edge_[index] > 0 && micros() - last_edge_[index] > 5000)			//It's been 5ms since an edge so we've received some IR symbols
+			//if(current_edge_index_[receiverIndex] > 0 && micros() - last_edge_[receiverIndex] > symbol_timeout_)			//It's been a while since an edge so we've received some IR symbols
+			if(current_edge_index_[receiverIndex] > 0)			//It's been a while since an edge so we've received some IR symbols
 			{
-				if(debug_uart_ != nullptr)
+				if(micros() - last_edge_[receiverIndex] > symbol_timeout_)
 				{
-					debug_uart_->print(F("avrInfraredReceiveHelper: pausing reception on channel "));
-					debug_uart_->println(index);
-				}
-				waiting_for_symbols_[index] = false;
-				if((current_edge_[index] & 0x0001) == 0)
-				{
-					receiveHelper.received_symbols_[index][receiveHelper.current_edge_[index]++] = 0;	//The last level is always low and duration zero
-				}
-				number_of_received_symbols_[index] = current_edge_[index]>>1;							//Update symbol count from symbol buffer index
-				return number_of_received_symbols_[index];										//Inform the caller there's a usefully filled symbol buffer
-			}
-		}
-		else	//There are symbols in the buffer to process
-		{
-			if(number_of_received_symbols_[index] == 0)
-			{
-				if(current_edge_[index] == 1)
-				{
-					current_edge_[index] = 0;
-					waiting_for_symbols_[index] = true;
+					waiting_for_symbols_[receiverIndex] = false;
+					if((current_edge_index_[receiverIndex] & 0x0001) == 0)														//It's an even index
+					{
+						received_symbols_[receiverIndex][current_edge_index_[receiverIndex]++] = 0;	//The last level is always an even index with level low and duration zero
+						if(debug_uart_ != nullptr)
+						{
+							debug_uart_->print(F("avrInfraredReceiveHelper: filling in zero off time for symbol "));
+							debug_uart_->println(current_edge_index_[receiverIndex]>>1);
+						}
+					}
+					number_of_received_symbols_[receiverIndex] = current_edge_index_[receiverIndex]>>1;							//Update symbol count from symbol buffer index/2
+					current_edge_index_[receiverIndex] = 0;
+					if(debug_uart_ != nullptr)
+					{
+						debug_uart_->print(F("avrInfraredReceiveHelper: partially full buffer on channel "));
+						debug_uart_->print(receiverIndex);
+						debug_uart_->print(F(" with "));
+						debug_uart_->print(number_of_received_symbols_[receiverIndex]);
+						debug_uart_->println(F(" symbols"));
+					}
+					return number_of_received_symbols_[receiverIndex];															//Inform the caller there's a usefully filled symbol buffer
 				}
 				else
 				{
-					number_of_received_symbols_[index] = current_edge_[index]>>1;	//Update symbol count from symbol buffer index
-					return number_of_received_symbols_[index];						//Inform the caller there's a usefully filled symbol buffer
+					/*
+					if(debug_uart_ != nullptr)
+					{
+						debug_uart_->print(F("avrInfraredReceiveHelper: waiting for timeout "));
+						debug_uart_->println(micros() - last_edge_[receiverIndex]);
+					}
+					uint32_t now = millis();
+					while(millis() - now < 3000)
+					{
+					}
+					*/
 				}
+			}
+		}
+		else
+		{
+			if(number_of_received_symbols_[receiverIndex] > 0)	//We've stopped looking for new symbols
+			{
+				return number_of_received_symbols_[receiverIndex];
+			}
+			else if(current_edge_index_[receiverIndex] > 0)	//There is a completely full buffer that stopped early to process
+			{
+				number_of_received_symbols_[receiverIndex] = current_edge_index_[receiverIndex]>>1;							//Update symbol count from symbol buffer index/2
+				current_edge_index_[receiverIndex] = 0;
+				if(debug_uart_ != nullptr)
+				{
+					debug_uart_->print(F("avrInfraredReceiveHelper: full buffer on channel "));
+					debug_uart_->print(receiverIndex);
+					debug_uart_->print(F(" with "));
+					debug_uart_->print(number_of_received_symbols_[receiverIndex]);
+					debug_uart_->println(F(" symbols"));
+				}
+				return number_of_received_symbols_[receiverIndex];															//Inform the caller there's a usefully filled symbol buffer
 			}
 		}
 	}
 	return 0;
 }
-void avrInfraredReceiveHelper::resume(uint8_t index)
+void avrInfraredReceiveHelper::resume(uint8_t receiverIndex)
 {
 	if(debug_uart_ != nullptr)
 	{
 		debug_uart_->print(F("avrInfraredReceiveHelper: resuming reception on channel "));
-		debug_uart_->println(index);
+		debug_uart_->println(receiverIndex);
 	}
-	number_of_received_symbols_[index] = 0;
-	last_edge_[index] = 0;
-	current_edge_[index] = 0;
-	waiting_for_symbols_[index] = true;
+	number_of_received_symbols_[receiverIndex] = 0;
+	last_edge_[receiverIndex] = 0;
+	current_edge_index_[receiverIndex] = 0;
+	waiting_for_symbols_[receiverIndex] = true;
+}
+void avrInfraredReceiveHelper::setSymbolTimeout(uint16_t timeout)
+{
+	if(debug_uart_ != nullptr)
+	{
+		debug_uart_->print(F("avrInfraredReceiveHelper: set symbol timeout to "));
+		debug_uart_->print(timeout);
+		debug_uart_->println(F("us"));
+	}
+	symbol_timeout_ = timeout;
 }
 avrInfraredReceiveHelper receiveHelper;	//Create an instance of the class, as only one is practically usable at a time despite not being a singleton
 

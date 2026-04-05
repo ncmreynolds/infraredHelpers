@@ -17,10 +17,6 @@ uint8_t infraredHelpers::getMinimumNumberOfSymbols()	//Maximum number of symbols
 {
 	return minimum_number_of_symbols_;
 }
-uint8_t infraredHelpers::getMaximumNumberOfSymbols()	//Maximum number of symbols
-{
-	return maximum_number_of_symbols_;
-}
 void infraredHelpers::setMaximumNumberOfSymbols(uint8_t symbols)				//Must be done before begin(), default is 48
 {
 	
@@ -65,11 +61,13 @@ infraredTransmitHelper::infraredTransmitHelper()	//Constructor function
 infraredTransmitHelper::~infraredTransmitHelper()	//Destructor function
 {
 }
-void infraredTransmitHelper::setCarrierFrequency(uint16_t frequency)				//Must be done before begin(), default is 56000
+bool infraredTransmitHelper::setCarrierFrequency(uint16_t frequency)				//Must be done before begin(), default is 56000
 {
+	return true;
 }
-void infraredTransmitHelper::setDutyCycle(uint8_t duty, uint8_t transmitterIndex)	//Must be done before begin(), default is 50 and very unlikely to change
+bool infraredTransmitHelper::setDutyCycle(uint8_t duty, uint8_t transmitterIndex)	//Must be done before begin(), default is 50 and very unlikely to change
 {
+	return true;
 }
 bool infraredTransmitHelper::begin(uint8_t numberOfTransmitters)	//Set up transmitters
 {
