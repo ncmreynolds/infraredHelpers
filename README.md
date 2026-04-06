@@ -13,6 +13,19 @@ I would like this to be able to 'genericise' infrared transmission/reception acr
 
 These helpers use the ESP32 RMT peripheral and do all the configuration/initialisation of it for you. In principle sending IR signals is the main role of RMT but most examples are either for known encodings or uses of it to drive other custom peripherals with tight timing requirement using hardware. 
 
+Available channels varies by the ESP32 variant and are shared by both transmit and receive...
+
+| MCU      | Channels | Tested |
+| -------- | -------- | ------ |
+| ESP32    |          |        |
+| ESP32-S2 |          |        |
+| ESP32-S3 |          |        |
+| ESP32-C2 |          |        |
+| ESP32-C3 | 2        | Yes    |
+| ESP32-C6 |          |        |
+| ESP32-H2 |          |        |
+| ESP32-P4 |          |        |
+
 ### AVR
 
 These helpers use interrupts and PWM/bit-banging. **Not yet fully implemented.**
