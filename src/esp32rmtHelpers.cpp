@@ -170,14 +170,14 @@ bool esp32rmtTransmitHelper::deactivateTransmitter(uint8_t index)
 		{
 			if(debug_uart_ != nullptr)
 			{
-				debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: deactivated transmitter %u on pin %u\r\n"), index, infrared_transmitter_config_[index].gpio_num);
+				debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: deactivate transmitter %u on pin %u\r\n"), index, infrared_transmitter_config_[index].gpio_num);
 			}
 			active_transmitter_ = 255;
 			return true;
 		}
 		if(debug_uart_ != nullptr)
 		{
-			debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: failed to deactivated transmitter %u on pin %u"), index, infrared_transmitter_config_[index].gpio_num);
+			debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: failed to deactivate transmitter %u on pin %u"), index, infrared_transmitter_config_[index].gpio_num);
 		}
 		if(result == ESP_ERR_INVALID_ARG)
 		{
