@@ -44,8 +44,8 @@ class esp32rmtTransmitHelper : public infraredHelpers, public infraredTransmitHe
 	protected:
 
 	private:
-		bool activateChannel(uint8_t index);									//Activate an RMT transmitter before use
-		bool deactivateChannel(uint8_t index);									//Deactivate an RMT channel before activating another
+		bool activateTransmitter(uint8_t index);								//Activate an RMT transmitter before use
+		bool deactivateTransmitter(uint8_t index);								//Deactivate an RMT channel before activating another
 		//Global RMT settings
 		rmt_carrier_config_t global_transmitter_config_ = {						//Global config across all receivers
 			.frequency_hz = 56000,
@@ -63,8 +63,6 @@ class esp32rmtTransmitHelper : public infraredHelpers, public infraredTransmitHe
 		rmt_copy_encoder_config_t copy_encoder_config_ = {};					//The copy encoder supports no configuration, but must exist
 		//RMT channel data
 		uint8_t infrared_transmitter_active_channel_ = 255;						//Last active channel, 255 implies none
-		bool* infrared_transmitter_ready_ = nullptr;							//RMT transmitter channel status
-		//int8_t* infrared_transmitter_pin_ = nullptr;							//RMT transmitter channel pin
 		rmt_channel_handle_t* infrared_transmitter_handle_ = nullptr;			//RMT transmitter channels
 		rmt_tx_channel_config_t* infrared_transmitter_config_ = nullptr;		//The RMT configuration for the transmitter(s)
 		//Symbol buffers

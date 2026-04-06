@@ -26,7 +26,9 @@ Available channels varies by the ESP32 variant and are shared by both transmit a
 | ESP32-H2 |          | 48                                     |             |        |
 | ESP32-P4 |          | 48                                     |             |        |
 
-...allocation of these blocks is fiddly and the library tries to manage this for you. For example if your transmit helper uses more symbols than are available in its first block (which is likely for more complicated protocols) it will spill over into the second block, preventing the second channel from being used. In this case, the library frees and allocates channels as necessary to enable more than one to be used at a time.
+...allocation of these blocks is fiddly and the library tries to manage this for you.
+
+For example if your transmit helper uses more symbols than are available in its first block (which is likely for more complicated protocols such as Data-over-Tag) it will spill over into the second block, preventing the second channel from being configured. In this case, the library frees and allocates channels as necessary to enable more than one transmitter to be used, but not simultaneously.
 
 Some ESP32s can access main memory using DMA and this bypasses most limits on the block size.
 
