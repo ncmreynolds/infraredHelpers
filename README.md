@@ -47,7 +47,16 @@ To Do
 
 #### IR reception
 
-To Do
+The library sets up an instance of the class appropriate for the architecture called 'receiveHelper' and these are its methods...
+
+	bool begin(uint8_t numberOfReceivers = 1);									//Initialise one or more receivers
+	bool configureRxPin(uint8_t index, int8_t pin, bool inverted = true);		//Configure a pin for RX on the current available channel
+	uint8_t getNumberOfReceivedSymbols(uint8_t index);						//Number of symbols received by a receiver
+	uint8_t receivedSymbolLevel0(uint8_t index, uint16_t symbolIndex);		//Getter for the symbol data
+	uint8_t receivedSymbolLevel1(uint8_t index, uint16_t symbolIndex);		//Getter for the symbol data
+	uint16_t receivedSymbolDuration0(uint8_t index, uint16_t symbolIndex);	//Getter for the symbol data
+	uint16_t receivedSymbolDuration1(uint8_t index, uint16_t symbolIndex);	//Getter for the symbol data
+	void resume(uint8_t index);												//Resume reception on a specific channel
 
 #### IR reception example
 
