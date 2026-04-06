@@ -41,7 +41,6 @@ bool esp32rmtTransmitHelper::begin(uint8_t numberOfTransmitters)
 {
 	bool initialisation_success_ = true;
 	number_of_transmitters_ = numberOfTransmitters;											//Record the number of transmitters
-	//infrared_transmitter_ready_ = new bool[number_of_transmitters_];						//Create array of RMT status flag(s)
 	infrared_transmitter_handle_ = new rmt_channel_handle_t[number_of_transmitters_];		//Create array of RMT handle(s)
 	infrared_transmitter_config_ = new rmt_tx_channel_config_t[number_of_transmitters_];	//Create array of RMT configuration(s)
 	symbols_to_transmit_ = new rmt_symbol_word_t*[number_of_transmitters_];					//Create array of symbol buffer(s)
@@ -80,7 +79,6 @@ bool esp32rmtTransmitHelper::begin(uint8_t numberOfTransmitters)
 	}
 	for(uint8_t index = 0; index < number_of_transmitters_; index++)
 	{
-		//infrared_transmitter_ready_[index] = false;
 		symbols_to_transmit_[index] = new rmt_symbol_word_t[getMaximumNumberOfSymbols()];
 		number_of_symbols_to_transmit_[index] = 0;
 	}
@@ -127,13 +125,6 @@ bool esp32rmtTransmitHelper::configureTxPin(uint8_t index, int8_t pin)
 			.with_dma = true,
 		#endif
 	};
-	/*
-	if(infrared_transmitter_active_channel_ == 255)	//Activate the first requested channel
-	{
-		return activateTransmitter(index);
-	}
-	else
-	*/
 	{
 		if(debug_uart_ != nullptr)
 		{
@@ -145,7 +136,6 @@ bool esp32rmtTransmitHelper::configureTxPin(uint8_t index, int8_t pin)
 }
 bool esp32rmtTransmitHelper::activateTransmitter(uint8_t index)
 {
-	//if(infrared_transmitter_ready_[index] == false)
 	if(index != infrared_transmitter_active_channel_)
 	{
 		if(rmt_new_tx_channel(&infrared_transmitter_config_[index], &infrared_transmitter_handle_[index]) == ESP_OK)
@@ -160,7 +150,6 @@ bool esp32rmtTransmitHelper::activateTransmitter(uint8_t index)
 			{
 				debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: activated transmitter %u on pin %u with %.2fKHz carrier and %u%% duty cycle\r\n"), index, infrared_transmitter_config_[index].gpio_num, float(global_transmitter_config_.frequency_hz/1000), uint8_t(global_transmitter_config_.duty_cycle*100));
 			}
-			//infrared_transmitter_ready_[index] = true;
 			infrared_transmitter_active_channel_ = index;
 			return true;
 		}
@@ -173,7 +162,6 @@ bool esp32rmtTransmitHelper::activateTransmitter(uint8_t index)
 }
 bool esp32rmtTransmitHelper::deactivateTransmitter(uint8_t index)
 {
-	//if(infrared_transmitter_ready_[index] == true)
 	if(index == infrared_transmitter_active_channel_)
 	{
 		rmt_disable(infrared_transmitter_handle_[index]);
@@ -184,7 +172,6 @@ bool esp32rmtTransmitHelper::deactivateTransmitter(uint8_t index)
 			{
 				debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: deactivated transmitter %u on pin %u\r\n"), index, infrared_transmitter_config_[index].gpio_num);
 			}
-			//infrared_transmitter_ready_[index] = false;
 			infrared_transmitter_active_channel_ = 255;
 			return true;
 		}
@@ -245,7 +232,6 @@ bool esp32rmtTransmitHelper::transmitSymbols(uint8_t transmitterIndex, bool wait
 			}
 		}
 	}
-	//if(infrared_transmitter_ready_[transmitterIndex] == true)
 	if(transmitterIndex == infrared_transmitter_active_channel_)
 	{
 		if(debug_uart_ != nullptr)
