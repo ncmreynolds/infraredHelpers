@@ -62,7 +62,7 @@ class esp32rmtTransmitHelper : public infraredHelpers, public infraredTransmitHe
 		rmt_encoder_t *copy_encoder_;											//We will use a 'copy encoder' and do all encoding ourselves
 		rmt_copy_encoder_config_t copy_encoder_config_ = {};					//The copy encoder supports no configuration, but must exist
 		//RMT channel data
-		uint8_t infrared_transmitter_active_channel_ = 255;						//Last active channel, 255 implies none
+		uint8_t active_transmitter_ = 255;										//Last active transmitter, 255 implies none
 		rmt_channel_handle_t* infrared_transmitter_handle_ = nullptr;			//RMT transmitter channels
 		rmt_tx_channel_config_t* infrared_transmitter_config_ = nullptr;		//The RMT configuration for the transmitter(s)
 		//Symbol buffers

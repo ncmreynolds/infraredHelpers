@@ -136,7 +136,7 @@ bool esp32rmtTransmitHelper::configureTxPin(uint8_t index, int8_t pin)
 }
 bool esp32rmtTransmitHelper::activateTransmitter(uint8_t index)
 {
-	if(index != infrared_transmitter_active_channel_)
+	if(index != active_transmitter_)
 	{
 		if(rmt_new_tx_channel(&infrared_transmitter_config_[index], &infrared_transmitter_handle_[index]) == ESP_OK)
 		{
@@ -150,7 +150,7 @@ bool esp32rmtTransmitHelper::activateTransmitter(uint8_t index)
 			{
 				debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: activated transmitter %u on pin %u with %.2fKHz carrier and %u%% duty cycle\r\n"), index, infrared_transmitter_config_[index].gpio_num, float(global_transmitter_config_.frequency_hz/1000), uint8_t(global_transmitter_config_.duty_cycle*100));
 			}
-			infrared_transmitter_active_channel_ = index;
+			active_transmitter_ = index;
 			return true;
 		}
 	}
@@ -162,7 +162,7 @@ bool esp32rmtTransmitHelper::activateTransmitter(uint8_t index)
 }
 bool esp32rmtTransmitHelper::deactivateTransmitter(uint8_t index)
 {
-	if(index == infrared_transmitter_active_channel_)
+	if(index == active_transmitter_)
 	{
 		rmt_disable(infrared_transmitter_handle_[index]);
 		esp_err_t result = rmt_del_channel(infrared_transmitter_handle_[index]);
@@ -172,7 +172,7 @@ bool esp32rmtTransmitHelper::deactivateTransmitter(uint8_t index)
 			{
 				debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: deactivated transmitter %u on pin %u\r\n"), index, infrared_transmitter_config_[index].gpio_num);
 			}
-			infrared_transmitter_active_channel_ = 255;
+			active_transmitter_ = 255;
 			return true;
 		}
 		if(debug_uart_ != nullptr)
@@ -218,21 +218,21 @@ bool esp32rmtTransmitHelper::addSymbol(uint8_t index, uint16_t duration0, uint8_
 }
 bool esp32rmtTransmitHelper::transmitSymbols(uint8_t transmitterIndex, bool wait)	//Transmit a buffer from the specified transmitter channel
 {
-	if(infrared_transmitter_active_channel_ != transmitterIndex)	//Check if the transmitter is active, and activate if not
+	if(active_transmitter_ != transmitterIndex)	//Check if the transmitter is active, and activate if not
 	{
-		if(infrared_transmitter_active_channel_ == 255)
+		if(active_transmitter_ == 255)
 		{
 			activateTransmitter(transmitterIndex); //Nothing is active, activate the requested channel
 		}
 		else	//Deactivate the current channel first
 		{
-			if(deactivateTransmitter(infrared_transmitter_active_channel_))	//Check it deactivated
+			if(deactivateTransmitter(active_transmitter_))	//Check it deactivated
 			{
 				activateTransmitter(transmitterIndex);	//Try and activate the requested channel
 			}
 		}
 	}
-	if(transmitterIndex == infrared_transmitter_active_channel_)
+	if(transmitterIndex == active_transmitter_)
 	{
 		if(debug_uart_ != nullptr)
 		{
