@@ -45,6 +45,23 @@ bool esp32rmtTransmitHelper::begin(uint8_t numberOfTransmitters)
 	infrared_transmitter_config_ = new rmt_tx_channel_config_t[number_of_transmitters_];	//Create array of RMT configuration(s)
 	symbols_to_transmit_ = new rmt_symbol_word_t*[number_of_transmitters_];					//Create array of symbol buffer(s)
 	number_of_symbols_to_transmit_ = new uint8_t[number_of_transmitters_];					//Create array of symbol buffer length(s)
+	#if defined SOC_RMT_TX_CANDIDATES_PER_GROUP
+		if(debug_uart_ != nullptr)
+		{
+			debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: Creating TX helper for %u channels, candidate RMT TX channels: %u\r\n"), numberOfTransmitters, SOC_RMT_TX_CANDIDATES_PER_GROUP);
+		}
+	#else
+		if(debug_uart_ != nullptr)
+		{
+			debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: Creating TX helper for %u channels\r\n"), numberOfTransmitters);
+		}
+	#endif
+	#if defined SOC_RMT_MEM_WORDS_PER_CHANNEL
+		if(debug_uart_ != nullptr)
+		{
+			debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: Each RMT channel has %u words memory available\r\n"), SOC_RMT_MEM_WORDS_PER_CHANNEL);
+		}
+	#endif
 	if(rmt_new_copy_encoder(&copy_encoder_config_, &copy_encoder_) != ESP_OK)				//Initialise the copy encoder
 	{
 		if(debug_uart_ != nullptr)
@@ -201,6 +218,12 @@ bool esp32rmtReceiveHelper::begin(uint8_t numberOfReceivers)
 		received_symbols_[index] = new rmt_symbol_word_t[getMaximumNumberOfSymbols()];	//Create symbol buffers
 		number_of_received_symbols_[index] = 0;											//Set received buffer length to zero
 	}
+	#if defined SOC_RMT_RX_CANDIDATES_PER_GROUP
+		if(debug_uart_ != nullptr)
+		{
+			debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: candidate RMT RX channels: %u"), SOC_RMT_RX_CANDIDATES_PER_GROUP);
+		}
+	#endif
 	return initialisation_success_;
 }
 bool esp32rmtReceiverHelperRxDoneCallback(rmt_channel_handle_t channel, const rmt_rx_done_event_data_t *edata, void *user_data)
