@@ -115,7 +115,11 @@ bool esp32rmtTransmitHelper::configureTxPin(uint8_t index, int8_t pin)
 		.trans_queue_depth = 4,
 	};
 	infrared_transmitter_config_[index].flags = {
-		.with_dma = false,
+		#if CONFIG_IDF_TARGET_ESP32C3
+			.with_dma = false,
+		#else
+			.with_dma = true,
+		#endif
 	};
 	if(rmt_new_tx_channel(&infrared_transmitter_config_[index], &infrared_transmitter_handle_[index]) == ESP_OK)
 	{
