@@ -41,6 +41,8 @@ bool esp32rmtTransmitHelper::begin(uint8_t numberOfTransmitters)
 {
 	bool initialisation_success_ = true;
 	number_of_transmitters_ = numberOfTransmitters;											//Record the number of transmitters
+	infrared_transmitter_ready_ = new bool[number_of_transmitters_];						//Create array of RMT status flag(s)
+	//infrared_transmitter_pin_ = new int8_t[number_of_transmitters_];						//Create array of RMT pin allocation(s)
 	infrared_transmitter_handle_ = new rmt_channel_handle_t[number_of_transmitters_];		//Create array of RMT handle(s)
 	infrared_transmitter_config_ = new rmt_tx_channel_config_t[number_of_transmitters_];	//Create array of RMT configuration(s)
 	symbols_to_transmit_ = new rmt_symbol_word_t*[number_of_transmitters_];					//Create array of symbol buffer(s)
@@ -48,7 +50,7 @@ bool esp32rmtTransmitHelper::begin(uint8_t numberOfTransmitters)
 	#if defined SOC_RMT_TX_CANDIDATES_PER_GROUP
 		if(debug_uart_ != nullptr)
 		{
-			debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: Creating TX helper for %u channels, candidate RMT TX channels: %u\r\n"), numberOfTransmitters, SOC_RMT_TX_CANDIDATES_PER_GROUP);
+			debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: Creating TX helper for %u channels, available RMT TX channels: %u\r\n"), numberOfTransmitters, SOC_RMT_TX_CANDIDATES_PER_GROUP);
 		}
 	#else
 		if(debug_uart_ != nullptr)
@@ -56,10 +58,10 @@ bool esp32rmtTransmitHelper::begin(uint8_t numberOfTransmitters)
 			debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: Creating TX helper for %u channels\r\n"), numberOfTransmitters);
 		}
 	#endif
-	#if defined SOC_RMT_MEM_WORDS_PER_CHANNEL
+	#if defined SOC_RMT_MEM_WORDS_PER_CHANNEL && defined SOC_RMT_TX_CANDIDATES_PER_GROUP && defined SOC_RMT_RX_CANDIDATES_PER_GROUP
 		if(debug_uart_ != nullptr)
 		{
-			debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: Each RMT channel has %u words memory available\r\n"), SOC_RMT_MEM_WORDS_PER_CHANNEL);
+			debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: RMT channels have %u words shared memory available in %u blocks\r\n"), SOC_RMT_MEM_WORDS_PER_CHANNEL * (SOC_RMT_TX_CANDIDATES_PER_GROUP + SOC_RMT_TX_CANDIDATES_PER_GROUP), SOC_RMT_TX_CANDIDATES_PER_GROUP + SOC_RMT_TX_CANDIDATES_PER_GROUP);
 		}
 	#endif
 	if(rmt_new_copy_encoder(&copy_encoder_config_, &copy_encoder_) != ESP_OK)				//Initialise the copy encoder
@@ -79,6 +81,8 @@ bool esp32rmtTransmitHelper::begin(uint8_t numberOfTransmitters)
 	}
 	for(uint8_t index = 0; index < number_of_transmitters_; index++)
 	{
+		infrared_transmitter_ready_[index] = false;
+		//infrared_transmitter_pin_[index] = -1;
 		symbols_to_transmit_[index] = new rmt_symbol_word_t[getMaximumNumberOfSymbols()];
 		number_of_symbols_to_transmit_[index] = 0;
 	}
@@ -88,6 +92,10 @@ bool esp32rmtTransmitHelper::begin(uint8_t numberOfTransmitters)
 bool esp32rmtTransmitHelper::setCarrierFrequency(uint16_t frequency)				//Must be done before begin(), default is 56000
 {
 	global_transmitter_config_.frequency_hz = frequency;
+	if(debug_uart_ != nullptr)
+	{
+		debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: carrier frequency set to %u\r\n"), frequency);
+	}
 	return true;
 }
 
@@ -121,30 +129,53 @@ bool esp32rmtTransmitHelper::configureTxPin(uint8_t index, int8_t pin)
 			.with_dma = true,
 		#endif
 	};
-	if(rmt_new_tx_channel(&infrared_transmitter_config_[index], &infrared_transmitter_handle_[index]) == ESP_OK)
+	//infrared_transmitter_pin_[index] = pin;
+	if(infrared_transmitter_active_channel_ == 255)	//Activate the first requested channel
 	{
-		rmt_tx_event_callbacks_t transmit_callbacks_ = {
-			.on_trans_done = esp32rmtTransmitHelperTxDoneCallback
-		};
-		rmt_tx_register_event_callbacks(infrared_transmitter_handle_[index], &transmit_callbacks_, &number_of_symbols_to_transmit_[index]);
-		rmt_apply_carrier(infrared_transmitter_handle_[index], &global_transmitter_config_);
-		rmt_enable(infrared_transmitter_handle_[index]);
-		if(debug_uart_ != nullptr)
-		{
-			debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: configured pin %u as transmitter %u at %.2fKHz %u%% duty cycle\r\n"), pin, index, float(global_transmitter_config_.frequency_hz/1000), uint8_t(global_transmitter_config_.duty_cycle*100));
-		}
-		return true;
+		return activateChannel(index);
 	}
 	else
 	{
 		if(debug_uart_ != nullptr)
 		{
-			debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: failed to configure pin %u for TX\r\n"), pin);
+			debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: configured pin %u as transmitter %u at %.2fKHz %u%% duty cycle, but inactive\r\n"), pin, index, float(global_transmitter_config_.frequency_hz/1000), uint8_t(global_transmitter_config_.duty_cycle*100));
 		}
+		return true;
 	}
 	return false;
 }
-
+bool esp32rmtTransmitHelper::activateChannel(uint8_t index)
+{
+	if(infrared_transmitter_ready_[index] == false)
+	{
+		if(rmt_new_tx_channel(&infrared_transmitter_config_[index], &infrared_transmitter_handle_[index]) == ESP_OK)
+		{
+			rmt_tx_event_callbacks_t transmit_callbacks_ = {
+				.on_trans_done = esp32rmtTransmitHelperTxDoneCallback
+			};
+			rmt_tx_register_event_callbacks(infrared_transmitter_handle_[index], &transmit_callbacks_, &number_of_symbols_to_transmit_[index]);
+			rmt_apply_carrier(infrared_transmitter_handle_[index], &global_transmitter_config_);
+			rmt_enable(infrared_transmitter_handle_[index]);
+			if(debug_uart_ != nullptr)
+			{
+				debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: activated pin %u as transmitter %u at %.2fKHz %u%% duty cycle\r\n"), pin, index, float(global_transmitter_config_.frequency_hz/1000), uint8_t(global_transmitter_config_.duty_cycle*100));
+			}
+			infrared_transmitter_ready_[index] = true;
+			infrared_transmitter_active_channel_ = index;
+			return true;
+		}
+		else
+		{
+			if(debug_uart_ != nullptr)
+			{
+				debug_uart_->printf_P(PSTR("esp32rmtTransmitHelper: failed to activate pin %u for TX\r\n"), pin);
+			}
+		}
+	}
+}
+bool esp32rmtTransmitHelper::deactivateChannel(uint8_t index)
+{
+}
 bool esp32rmtTransmitHelper::addSymbol(uint8_t index, uint16_t duration0, uint8_t level0, uint16_t duration1, uint8_t level1)
 {
 	if(number_of_symbols_to_transmit_[index] < getMaximumNumberOfSymbols())

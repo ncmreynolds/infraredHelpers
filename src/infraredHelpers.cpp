@@ -20,18 +20,25 @@ uint8_t infraredHelpers::getMinimumNumberOfSymbols()	//Maximum number of symbols
 bool infraredHelpers::setMaximumNumberOfSymbols(uint16_t symbols)				//Must be done before begin(), default is 48
 {
 	
-	if(symbols > minimum_number_of_symbols_ && symbols > maximum_number_of_symbols_)	//Only update if necessary, also considering there is a minimum value on ESP32/RMT
+	if(symbols < minimum_number_of_symbols_)
+	{
+		if(debug_uart_ != nullptr)
+		{
+			debug_uart_->printf_P(PSTR("infraredHelpers: maximum number of symbols requested %u is below minimum of %u\r\n"), symbols, minimum_number_of_symbols_);
+		}
+	}
+	else if(symbols > maximum_number_of_symbols_)	//Only update if necessary, also considering there is a minimum value on ESP32/RMT
 	{
 		#if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32S2 || CONFIG_IDF_TARGET_ESP32S3 || CONFIG_IDF_TARGET_ESP32C2 || CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32C6 || CONFIG_IDF_TARGET_ESP32H2 || CONFIG_IDF_TARGET_ESP32P4
 			if(symbols%2 == 1)
 			{
-				symbols++;	//On ESP32 the RMT symbol buffer must be an even number size
+				symbols++;	//On ESP32 the RMT symbol buffer size must be an even number
 			}
 		#endif
 		maximum_number_of_symbols_ = symbols;
 		if(debug_uart_ != nullptr)
 		{
-			debug_uart_->print(F("infraredHelpers maximum number of symbols: "));
+			debug_uart_->print(F("infraredHelpers: maximum number of symbols: "));
 			debug_uart_->println(maximum_number_of_symbols_);
 		}
 		return true;

@@ -19,6 +19,14 @@
 #include "driver/rmt_tx.h"
 #include "driver/rmt_rx.h"
 
+/*
+class esp32rmtHelper : public infraredHelpers, public infraredTransmitHelper {
+	
+}
+
+extern esp32rmtHelper infraredHelper;	//Create an instance of the class, as only one is practically usable at a time despite not being a singleton
+*/
+
 class esp32rmtTransmitHelper : public infraredHelpers, public infraredTransmitHelper {
 	public:
 		esp32rmtTransmitHelper();												//Constructor function
@@ -36,6 +44,8 @@ class esp32rmtTransmitHelper : public infraredHelpers, public infraredTransmitHe
 	protected:
 
 	private:
+		bool activateChannel(uint8_t index);									//Activate an RMT transmitter before use
+		bool deactivateChannel(uint8_t index);									//Deactivate an RMT channel before activating another
 		//Global RMT settings
 		rmt_carrier_config_t global_transmitter_config_ = {						//Global config across all receivers
 			.frequency_hz = 56000,
@@ -45,11 +55,16 @@ class esp32rmtTransmitHelper : public infraredHelpers, public infraredTransmitHe
 			//}
 		};
 		rmt_transmit_config_t event_transmitter_config_ = {
-			//.eot_level = 0,														//Drive pin low at end
+			//.eot_level = 0,													//Drive pin low at end
 			//.loop_count = 0,													//Do not loop
 		};
+		//Copy encoder
 		rmt_encoder_t *copy_encoder_;											//We will use a 'copy encoder' and do all encoding ourselves
 		rmt_copy_encoder_config_t copy_encoder_config_ = {};					//The copy encoder supports no configuration, but must exist
+		//RMT channel data
+		uint8_t infrared_transmitter_active_channel_ = 255;						//Last active channel, 255 implies none
+		bool* infrared_transmitter_ready_ = nullptr;							//RMT transmitter channel status
+		//int8_t* infrared_transmitter_pin_ = nullptr;							//RMT transmitter channel pin
 		rmt_channel_handle_t* infrared_transmitter_handle_ = nullptr;			//RMT transmitter channels
 		rmt_tx_channel_config_t* infrared_transmitter_config_ = nullptr;		//The RMT configuration for the transmitter(s)
 		//Symbol buffers

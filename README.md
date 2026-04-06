@@ -13,18 +13,22 @@ I would like this to be able to 'genericise' infrared transmission/reception acr
 
 These helpers use the ESP32 RMT peripheral and do all the configuration/initialisation of it for you. In principle sending IR signals is the main role of RMT but most examples are either for known encodings or uses of it to drive other custom peripherals with tight timing requirement using hardware. 
 
-Available channels varies by the ESP32 variant and are shared by both transmit and receive...
+Available channels varies by the ESP32 variant and are shared by both transmit and receive and also share blocks of memory...
 
-| MCU      | Channels | Tested |
-| -------- | -------- | ------ |
-| ESP32    |          |        |
-| ESP32-S2 |          |        |
-| ESP32-S3 |          |        |
-| ESP32-C2 |          |        |
-| ESP32-C3 | 2        | Yes    |
-| ESP32-C6 |          |        |
-| ESP32-H2 |          |        |
-| ESP32-P4 |          |        |
+| MCU      | Channels | Block size per channel (words/symbols) | DMA capable | Tested |
+| -------- | -------- | -------------------------------------- | ----------- | ------ |
+| ESP32    |          | 64                                     |             |        |
+| ESP32-S2 |          | 64                                     |             |        |
+| ESP32-S3 |          | 48                                     |             |        |
+| ESP32-C2 |          | 48                                     |             |        |
+| ESP32-C3 | 2TX 2RX  | 48                                     | No          | Yes    |
+| ESP32-C6 |          | 48                                     |             |        |
+| ESP32-H2 |          | 48                                     |             |        |
+| ESP32-P4 |          | 48                                     |             |        |
+
+...allocation of these blocks is fiddly and the library tries to manage this for you. For example if your transmit helper uses more symbols than are available in its first block (which is likely for more complicated protocols) it will spill over into the second block, preventing the second channel from being used. In this case, the library frees and allocates channels as necessary to enable more than one to be used at a time.
+
+Some ESP32s can access main memory using DMA and this bypasses most limits on the block size.
 
 ### AVR
 
